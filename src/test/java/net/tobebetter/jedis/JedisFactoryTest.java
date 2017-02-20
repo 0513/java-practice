@@ -1,10 +1,13 @@
 package net.tobebetter.jedis;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by 0513 on 2017/2/6.
@@ -101,10 +104,78 @@ public class JedisFactoryTest {
     }
 
 
+    /**
+     * 全局相关操作
+     * del exists keys randomkey
+     * expire pexpire expireat pexpireat  ttl pttl persist (set getset会覆写生存时间)
+     * select(0-15，每次获取链接，都为数据库0)
+     * move(如果目标数据库有相同名字的key，则无任何效果)
+     * type
+     * rename renamenx
+     * TODO dump migrate object restore sort scan
+     */
+    @Test
+    public void testGlobal() throws InterruptedException {
+        Jedis jedis = JedisFactory.getJedis();
+        jedis.set("username", "zhang");
+        //exists  是否存在key
+        Assert.assertTrue(jedis.exists("username"));
+        //del 删除key
+        long delCount = jedis.del("username");
+        Assert.assertTrue(!jedis.exists("username"));
+        //keys 查询
+        jedis.set("username", "zhang");
+        Set<String> keys = jedis.keys("*");
+        Assert.assertTrue(keys.contains("username"));
+        //randomkey 随机返回一个key
+        Assert.assertEquals("username", jedis.randomKey());
+        //move 移动到
+        jedis.move("username", 1);
+        Assert.assertEquals(null, jedis.get("username"));
+        jedis.select(1);
+        Assert.assertTrue(jedis.exists("username"));
+        //type 类型，none(key不存在) string list set zset hash
+        Assert.assertEquals("string", jedis.type("username"));
+        //expire pexpire 设置时间
+        jedis.pexpire("username", 1000);
+        Thread.sleep(1);
+        //ttl pttl 获取过期时间
+        Assert.assertTrue(jedis.pttl("username") > 0 && jedis.pttl("username") < 1000);
+        jedis.set("username", "zhang");  //过期时间会被覆盖
+        Assert.assertEquals(new Long(-1), jedis.pttl("username"));
+        //expireAt pexpireAt 以时间戳设置过期时间
+        long result2 = jedis.pexpireAt("username", new Date().getTime() + 1000); //注意与linux时间差
+        Thread.sleep(1);
+        Assert.assertTrue(jedis.pttl("username") > 0 && jedis.pttl("username") < 1000);
+        //persist 移除过期时间
+        jedis.persist("username");
+        Assert.assertEquals(new Long(-1), jedis.ttl("username"));
+        //rename 重命名 新名称存在时，旧值会被覆盖
+        jedis.rename("username", "username1");
+        Assert.assertEquals("zhang", jedis.get("username1"));
+        //renamenx 新值不存在时，才会重命名
+        jedis.set("name", "qg");
+        Long renameResult = jedis.renamenx("username1", "name");
+        Assert.assertEquals(new Long(0), renameResult);
+        Assert.assertEquals("qg", jedis.get("name"));
 
-    //全局相关操作
-    public void testGlobal(){
+    }
 
+    /**
+     * 删除所有key
+     */
+    @Before
+    public void cleanAllKeys(){
+        Jedis jedis = JedisFactory.getJedis();
+        Set<String> keys = jedis.keys("*");
+        for(String key : keys){
+            jedis.del(key);
+        }
+        jedis.select(1);
+        Set<String> keys2 = jedis.keys("*");
+        for(String key : keys2){
+            jedis.del(key);
+        }
     }
 
 }
