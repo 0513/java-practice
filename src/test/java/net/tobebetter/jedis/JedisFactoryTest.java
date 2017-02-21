@@ -5,9 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by 0513 on 2017/2/6.
@@ -94,13 +92,58 @@ public class JedisFactoryTest {
 //        Assert.assertEquals(null, jedis.get("pex"));
     }
 
-    //List相关操作
+    /**
+     * hash相关操作(适合存储多属性的对象)
+     * hset hsetnx hget hgetall hkeys hvals
+     * hlen hdel hexists
+     * hmset hmget
+     * hincrby hincrbyfloat
+     * TODO: hscan
+     */
+    @Test
     public void testList(){
         Jedis jedis = JedisFactory.getJedis();
-        jedis.set("username", "");
-        //删除
-        jedis.del("username");
-        Assert.assertEquals(null, jedis.get("username"));
+        //hset
+        jedis.hset("user", "username", "zhang");
+        jedis.hset("user", "age", "12");
+        //hget
+        Assert.assertEquals("zhang", jedis.hget("user", "username"));
+        //hgetall 获得某对象所有键值对
+        Map<String, String> getAll = jedis.hgetAll("user");
+        Assert.assertEquals("12", getAll.get("age"));
+        //hsetnx
+        long hsetnx = jedis.hsetnx("user", "username", "wang");
+        Assert.assertEquals(0, hsetnx);
+        Assert.assertEquals("zhang", jedis.hget("user", "username"));
+        //hkeys 获得某对象所有key
+        Set<String> keys = jedis.hkeys("user");
+        Assert.assertTrue(keys.contains("username"));
+        //hvals 获得某对象所有key的值
+        List<String> hvals = jedis.hvals("user");
+        //hlen 某对象key的数量
+        Assert.assertEquals(new Long(2), jedis.hlen("user"));
+        //hdel 删除对象某key
+        jedis.hdel("user", "age");
+        Assert.assertEquals(null, jedis.hget("user", "age"));
+        //hexists
+        Assert.assertFalse(jedis.hexists("user", "age"));
+        //hmset 同时设置多个key
+        Map<String, String> keyValues = new HashMap<>();
+        keyValues.put("name", "qg");
+        keyValues.put("job", "IT");
+        jedis.hmset("user", keyValues);
+        Assert.assertEquals("IT", jedis.hget("user", "job"));
+        //hmget 同时获取多个key的值
+        List<String> values = jedis.hmget("user", "name", "job");
+        Assert.assertEquals(2, values.size());
+        Assert.assertEquals("qg", values.get(0));
+        //hincrby 增加
+        jedis.hset("user", "age", "12");
+        jedis.hincrBy("user", "age", 2);
+        Assert.assertEquals("14", jedis.hget("user", "age"));
+        //hincrbyfloat 增加一个符点数
+        jedis.hincrByFloat("user", "age", 1.5);
+        Assert.assertEquals("15.5", jedis.hget("user", "age"));
     }
 
 
