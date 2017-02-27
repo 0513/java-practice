@@ -247,6 +247,59 @@ public class JedisFactoryTest {
     }
 
     /**
+     * zset相关测试
+     * rank指排序后的下标，score即设置的score
+     * TODO:zunionstore / zinterstore
+     */
+    @Test
+    public void testZSet(){
+        //zadd(key, score, member)：向名称为key的zset中添加元素member，score用于排序。如果该元素已经存在，则根据score更新该元素的顺序。
+        Jedis jedis = JedisFactory.getJedis();
+        jedis.zadd("users", 0, "zhang");
+        jedis.zadd("users", 3, "li");
+        jedis.zadd("users", 4, "wang");
+        //zrange(key, start, end)：返回名称为key的zset（元素已按score从小到大排序）中的index从start到end的所有元素
+        Set<String> users = jedis.zrange("users", 0, 2);
+        Assert.assertTrue(users.contains("zhang")); //这里遍历的话，是有序的？！！
+        //zrevrange(key, start, end)：返回名称为key的zset（元素已按score从大到小排序）中的index从start到end的所有元素
+        Set<String> zrevrank = jedis.zrevrange("users", 0, 2);
+        Assert.assertTrue(zrevrank.contains("zhang"));
+        //zrem(key, member) ：删除名称为key的zset中的元素member
+        jedis.zrem("users", "li");
+        Assert.assertFalse(jedis.zrange("users", 0, 2).contains("li"));
+        //zincrby(key, increment, member) ：如果在名称为key的zset中已经存在元素member，则该元素的score增加increment；否则向集合中添加该元素，其score的值为increment
+        jedis.zincrby("users", 2, "wang");
+        //zscore(key, element)：返回名称为key的zset中元素element的score
+        Assert.assertEquals(new Double(6), jedis.zscore("users", "wang"));
+        //zrank(key, member) ：返回名称为key的zset（元素已按score从小到大排序）中member元素的rank（即index，从0开始），若没有member元素，返回“nil”
+        long zhangRank = jedis.zrank("users", "zhang"); //下标值
+        Assert.assertEquals(0, zhangRank);
+        //zcard(key)：返回名称为key的zset的元素个数
+        Assert.assertEquals(new Long(2), jedis.zcard("users"));
+        //zrangebyscore(key, min, max)：返回名称为key的zset中score >= min且score <= max的所有元素
+        Set<String> zrangebyscore = jedis.zrangeByScore("users", 2, 6);
+        Assert.assertTrue(zrangebyscore.contains("wang"));
+        Assert.assertFalse(zrangebyscore.contains("zhang"));
+        //zremrangebyrank(key, min, max)：删除名称为key的zset中rank >= min且rank <= max的所有元素
+        jedis.zadd("users", 1, "li");
+        jedis.zadd("users", 2, "zhao");
+        jedis.zadd("users", 3, "zhou");
+        //[0 zhang  1 li  2 zhao 3 zhou  6 wang]
+        jedis.zremrangeByRank("users", 1, 2);
+        Assert.assertTrue(jedis.zrange("users", 0 , 10).contains("zhou"));
+        Assert.assertFalse(jedis.zrange("users", 0 , 10).contains("zhao"));
+        //zremrangebyscore(key, min, max) ：删除名称为key的zset中score >= min且score <= max的所有元素
+        //[0 zhang  3 zhou  6 wang]
+        jedis.zremrangeByScore("users", 3, 3);
+        Assert.assertTrue(jedis.zrange("users", 0 , 10).contains("zhang"));
+        Assert.assertFalse(jedis.zrange("users", 0 , 10).contains("zhou"));
+        //zunionstore / zinterstore(dstkeyN, key1,…,keyN, WEIGHTS w1,…wN, AGGREGATE SUM|MIN|MAX)：对N个zset求并集和交集，并将最后的集合保存在dstkeyN中。对于集合中每一个元素的score，在进行 AGGREGATE运算前，都要乘以对于的WEIGHT参数。如果没有提供WEIGHT，默认为1。默认的AGGREGATE是SUM，即结果集合中元素 的score是所有集合对应元素进行SUM运算的值，而MIN和MAX是指，结果集合中元素的score是所有集合对应元素中最小值和最大值。
+
+
+
+    }
+
+    /**
      * 全局相关操作
      * del exists keys randomkey
      * expire pexpire expireat pexpireat  ttl pttl persist (set getset会覆写生存时间)
