@@ -219,17 +219,16 @@ public class JedisFactoryTest {
         //srem(key, member) ：删除名称为key的set中的元素member
         jedis.srem("users", "zhang");
         Assert.assertFalse(jedis.sismember("users", "zhang"));
-        //spop(key) ：随机返回并删除名称为key的set中一个元素
-        String spop = jedis.spop("users");
-        Assert.assertFalse(jedis.sismember("users", spop));
-        //[zhao, li]
         //scard(key) ：返回名称为key的set的基数
         long count = jedis.scard("users");
-        Assert.assertEquals(2, count);
+        Assert.assertEquals(3, count);
         //smove(srckey, dstkey, member) ：将member元素从名称为srckey的集合移到名称为dstkey的集合
         jedis.smove("users", "users2", "li");
         Assert.assertFalse(jedis.sismember("users", "li"));
         Assert.assertTrue(jedis.sismember("users2", "li"));
+        //spop(key) ：随机返回并删除名称为key的set中一个元素
+        String spop = jedis.spop("users");
+        Assert.assertFalse(jedis.sismember("users", spop));
         //sinter(key1, key2,…key N) ：求交集
         //sunion(key1, key2,…key N) ：求并集(Key1不同于key2…keyN)
         //sdiff(key1, key2,…key N) ：求差集
