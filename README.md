@@ -12,4 +12,5 @@
 ##参考地址：
 
 * [redis命令](http://doc.redisfans.com/)
+* [redis命令具体说明](http://blog.csdn.net/chen88358323/article/details/47318303)
 * [redis储存序列化对象](http://alanland.iteye.com/blog/1600685)

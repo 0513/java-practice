@@ -101,7 +101,7 @@ public class JedisFactoryTest {
      * TODO: hscan
      */
     @Test
-    public void testList(){
+    public void testHash(){
         Jedis jedis = JedisFactory.getJedis();
         //hset
         jedis.hset("user", "username", "zhang");
@@ -146,6 +146,106 @@ public class JedisFactoryTest {
         Assert.assertEquals("15.5", jedis.hget("user", "age"));
     }
 
+    /**
+     * List相关操作
+     * lset lpush rpush
+     * lindex lrange llen ltrim
+     * lrem lpop rpop rpoplpush
+     * TODO:brpop blpop
+     */
+    @Test
+    public void testList(){
+        Jedis jedis = JedisFactory.getJedis();
+        //lpush(key, value)：在名称为key的list头添加一个值为value的 元素
+        jedis.lpush("users", "zhang");
+        jedis.lpush("users", "wang");
+        //lindex(key, index)：返回名称为key的list中index位置的元素
+        String user1 = jedis.lindex("users", 0);
+        Assert.assertEquals("wang", user1);
+        //rpush(key, value)：在名称为key的list尾添加一个值为value的元素（即index=length-1)
+        jedis.rpush("users", "li");
+        Assert.assertEquals("li", jedis.lindex("users", 2));
+        //lset(key, index, value)：给名称为key的list中index位置的元素赋值为value
+        jedis.lset("users", 0, "zhao");
+        Assert.assertEquals("zhao", jedis.lindex("users", 0));
+        //llen(key)：返回名称为key的list的长度
+        Assert.assertEquals(new Long(3), jedis.llen("users"));
+        //lrange(key, start, end)：返回名称为key的list中start至end之间的元素（下标从0开始，下同）
+        List<String> users = jedis.lrange("users", 1, 2);
+        Assert.assertEquals("li", users.get(1));
+        // ltrim(key, start, end)：截取名称为key的list，保留start至end之间的元素
+        jedis.ltrim("users", 1, 2);
+        Assert.assertEquals("zhang", jedis.lindex("users", 0));
+        //[zhang, li]
+        //rpop(key)：返回并删除名称为key的list中的尾元素
+        String rpop = jedis.rpop("users");
+        Assert.assertEquals("li", rpop);
+        jedis.rpush("users", "li");
+        Assert.assertEquals("zhang", jedis.lpop("users"));
+        jedis.rpush("users", "li");
+        jedis.rpush("users", "zhao");
+        //[li, li, zhao]
+        //lrem(key, count, value)：删除count个名称为key的list中值为value的元素。count为0，删除所有值为value的元素，count>0从 头至尾删除count个值为value的元素，count<0从尾到头删除|count|个值为value的元素。
+        jedis.lrem("users", -1, "li");
+        Assert.assertEquals("zhao", jedis.lindex("users", 1));
+        //users: [li, zhao]  users2 : []
+        //rpoplpush(srckey, dstkey)：返回并删除名称为srckey的list的尾元素，并将该元素添加到名称为dstkey的list的头部
+        jedis.rpoplpush("users", "users2");
+        Assert.assertEquals(null, jedis.lindex("users", 1));
+        Assert.assertEquals("zhao", jedis.lindex("users2", 0));
+    }
+
+    /**
+     * set相关测试
+     * sadd spop
+     * smove
+     * scard
+     */
+    @Test
+    public void testSet(){
+        Jedis jedis = JedisFactory.getJedis();
+        //sadd(key, member)：向名称为key的set中添加元素member
+        jedis.sadd("users", "zhang", "wang", "li", "zhao");
+        //smembers(key) ：返回名称为key的set的所有元素
+        Set<String> users = jedis.smembers("users");
+        Assert.assertTrue(users.contains("zhang"));
+        Assert.assertEquals(4, users.size());
+        //srandmember(key) ：随机返回名称为key的set的一个元素
+        String oneUser = jedis.srandmember("users");
+        Assert.assertTrue(users.contains(oneUser));
+        //sismember(key, member) ：测试member是否是名称为key的set的元素
+        Assert.assertTrue(jedis.sismember("users", "zhang"));
+        Assert.assertFalse(jedis.sismember("users", "zhang2"));
+        //srem(key, member) ：删除名称为key的set中的元素member
+        jedis.srem("users", "zhang");
+        Assert.assertFalse(jedis.sismember("users", "zhang"));
+        //spop(key) ：随机返回并删除名称为key的set中一个元素
+        String spop = jedis.spop("users");
+        Assert.assertFalse(jedis.sismember("users", spop));
+        //[zhao, li]
+        //scard(key) ：返回名称为key的set的基数
+        long count = jedis.scard("users");
+        Assert.assertEquals(2, count);
+        //smove(srckey, dstkey, member) ：将member元素从名称为srckey的集合移到名称为dstkey的集合
+        jedis.smove("users", "users2", "li");
+        Assert.assertFalse(jedis.sismember("users", "li"));
+        Assert.assertTrue(jedis.sismember("users2", "li"));
+        //sinter(key1, key2,…key N) ：求交集
+        //sunion(key1, key2,…key N) ：求并集(Key1不同于key2…keyN)
+        //sdiff(key1, key2,…key N) ：求差集
+        jedis.sadd("character1", "A", "B", "C");
+        jedis.sadd("character2", "A", "E", "F");
+        jedis.sadd("character3", "B", "F", "G");
+        Set<String> inter = jedis.sinter("character1", "character2");
+        Assert.assertEquals(1, inter.size());
+        Assert.assertTrue(inter.contains("A"));
+        Set<String> union = jedis.sunion("character1", "character2");
+        Assert.assertEquals(5, union.size());
+        Assert.assertTrue(union.contains("B"));
+        Set<String> diff = jedis.sdiff("character1", "character2", "character3");
+        Assert.assertEquals(1, diff.size());
+        Assert.assertTrue(diff.contains("C"));
+    }
 
     /**
      * 全局相关操作
