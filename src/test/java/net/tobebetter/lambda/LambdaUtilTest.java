@@ -30,6 +30,12 @@ public class LambdaUtilTest {
         Assert.assertEquals(new Integer(3), result.get(0));
     }
 
+    @Test
+    public void sum(){
+        long sum = LambdaUtil.sum(numbers);
+        Assert.assertEquals(6, sum);
+    }
+
     @Before
     public void initList(){
         numbers = new ArrayList<Integer>();
